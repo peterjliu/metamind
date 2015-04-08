@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 
 	"net/http"
 )
@@ -21,6 +22,16 @@ type SentiClient struct {
 	apikey string
 }
 
+type PredictedClass struct {
+	ClassId   int     `json:"class_id"`
+	ClassName string  `json:"class_name"`
+	Prob      float32 `json:"prob"`
+}
+
+type SentiResp struct {
+	Predictions []PredictedClass `json:"predictions"`
+}
+
 func NewSentimentClient(apikey string) *SentiClient {
 	s := &SentiClient{
 		client: &http.Client{},
@@ -29,7 +40,7 @@ func NewSentimentClient(apikey string) *SentiClient {
 	return s
 }
 
-func (s *SentiClient) Classify(text string) ([]byte, error) {
+func (s *SentiClient) Classify(text string) (*SentiResp, error) {
 	// 155 is sentiment classifier in demo
 	testText := textEndpoint{ClassifierId: 155, Value: text}
 	b, err := json.Marshal(testText)
@@ -42,9 +53,23 @@ func (s *SentiClient) Classify(text string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseResp(resp)
+}
+
+func parseBody(body []byte) (*SentiResp, error) {
+	var parsedResp SentiResp
+	err := json.Unmarshal(body, &parsedResp)
+	if err != nil {
+		log.Print("error unmarshalling")
+		return &parsedResp, err
+	}
+	return &parsedResp, nil
+}
+
+func parseResp(resp *http.Response) (*SentiResp, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	return body, nil
+	return parseBody(body)
 }
