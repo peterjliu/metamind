@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"time"
 
 	"net/http"
 )
@@ -72,4 +73,30 @@ func parseResp(resp *http.Response) (*SentiResp, error) {
 		return nil, err
 	}
 	return parseBody(body)
+}
+
+type SentimentResp struct {
+	Text       string
+	Prediction *SentiResp
+	Success    bool
+	Duration   time.Duration
+}
+
+// Get sentiment using metamind client for a string and put it in a channel.
+func GetSentiment(client *SentiClient, text string, sentiments chan *SentimentResp) error {
+	t0 := time.Now()
+	senti, err := client.Classify(text)
+	if err != nil {
+		return err
+	}
+	sentiments <- &SentimentResp{Text: text, Prediction: senti, Success: err == nil, Duration: time.Since(t0)}
+	return nil
+}
+
+func PrintSentiments(testText string, senti *SentiResp) {
+	fmt.Printf("Sentiment for: %s\n", testText)
+	for _, p := range senti.Predictions {
+		fmt.Printf("%s %g\n", p.ClassName, p.Prob)
+	}
+	fmt.Printf("\n")
 }
